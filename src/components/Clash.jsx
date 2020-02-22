@@ -1,4 +1,5 @@
-import React from "react";
+import React, {Component} from "react";
+import createReactClass from "create-react-class";
 import _ from "lodash";
 import fx from "./../lib/sound-effects";
 import Tiles from "./Tiles.jsx";
@@ -12,45 +13,41 @@ import ClashJS from "../clashjs/ClashCore.js";
 
 import playerObjects from "../Players.js";
 var playerArray = _.shuffle(_.map(playerObjects, el => el));
-
 var killsStack = [];
 
 const DEFAULT_SPEED = 100;
 const MAX_SPEED = 50;
 
-class Clash extends React.Component {
-  constructor(props) {
-    super(props);
 
-    window.ClashInstance = new ClashJS(playerArray, {}, this.handleEvent.bind(this));
+  var Clash = createReactClass({
+    getInitialState: function(){
+      window.ClashInstance = new ClashJS(playerArray, {}, this.handleEvent.bind(this));
 
-    // window.ClashInstance.target.addEventListener("DATA", evt => {
-    //   this.handleEvent(evt.detail.name, evt.detail.data);
-    // });
+     return {
+       clashjs: window.ClashInstance.getState(),
+       shoots: [],
+       speed: DEFAULT_SPEED,
+       kills: [],
+       currentGameIndex: 1,
+       finished: false
+     };
+   },
 
-    this.state = {
-      clashjs: window.ClashInstance.getState(),
-      shoots: [],
-      speed: DEFAULT_SPEED,
-      kills: [],
-      currentGameIndex: 1,
-      finished: false
-    };
-  }
 
-  componentDidMount() {
+  componentDidMount: function(){
     this.nextTurn();
-  }
+  },
 
-  handleClick() {
+  handleClick: function(){
     this.setState({
       speed: Math.floor(this.state.speed * 0.9)
     });
-  }
+  },
 
-  newGame() {
+  newGame : function() {
     killsStack = [];
 
+    var NextGameIndex = this.state.currentGameIndex+1
     if (this.nextTurnTimeout) clearTimeout(this.nextTurnTimeout);
 
     window.ClashInstance.setupGame();
@@ -61,7 +58,8 @@ class Clash extends React.Component {
           clashjs: window.ClashInstance.getState(),
           speed: DEFAULT_SPEED,
           kills: [],
-          currentGameIndex: state.currentGameIndex + 1
+          shoot: [],
+          currentGameIndex: NextGameIndex
         };
       },
       () => {
@@ -71,9 +69,9 @@ class Clash extends React.Component {
         }, 50);
       }
     );
-  }
+  },
 
-  nextTurn() {
+  nextTurn: function(){
     if (this.state.finished) return;
 
     var currentGameIndex = this.state.currentGameIndex;
@@ -104,9 +102,9 @@ class Clash extends React.Component {
         this.nextTurn
       );
     }, this.state.speed);
-  }
+  },
 
-  handleEvent(evt, data) {
+  handleEvent: function(evt, data){
     if (evt === "SHOOT") {
       let newShoots = this.state.shoots;
       newShoots.push({
@@ -123,9 +121,9 @@ class Clash extends React.Component {
     if (evt === "DRAW") return this.newGame();
     if (evt === "KILL") return this._handleKill(data);
     if (evt === "END") return this.endGame();
-  }
+  },
 
-  _handleKill(data) {
+  _handleKill: function(data){
     let players = window.ClashInstance.getState().playerInstances;
     let kills = this.state.kills;
     let killer = players[data.killer];
@@ -143,9 +141,9 @@ class Clash extends React.Component {
     });
 
     setTimeout(() => this.handleStreak(data.killer, killer, killed), 100);
-  }
+  },
 
-  endGame() {
+  endGame : function(){
     this.setState({
       clashjs: window.ClashInstance.getState(),
       shoots: [],
@@ -153,9 +151,9 @@ class Clash extends React.Component {
       kills: [],
       finished: true
     });
-  }
+  },
 
-  handleStreak(index, killer, killed) {
+  handleStreak : function(index, killer, killed){
     let streakCount = _.filter(killsStack, player => player === index).length;
     let multiKill = "";
     let spreeMessage = "";
@@ -177,6 +175,9 @@ class Clash extends React.Component {
         setTimeout(fx.streak.monsterKill.play(), 100);
         multiKill = killer.getName() + " is a MONSTER KILLER!";
         break;
+        default:
+          multiKill=killer.getName();
+
     }
     kills.push({
       date: new Date(),
@@ -208,9 +209,9 @@ class Clash extends React.Component {
     this.setState({
       kills: kills
     });
-  }
+  },
 
-  render() {
+  render () {
     var { clashjs, shoots, kills, finished } = this.state;
 
     var { gameEnvironment, gameStats, playerStates, playerInstances, rounds, totalRounds } = clashjs;
@@ -235,17 +236,28 @@ class Clash extends React.Component {
     }
 
     return (
-      <div className="clash" onClick={this.handleClick.bind(this)}>
-        <Tiles gridSize={gameEnvironment.gridSize} />
-        <Shoots shoots={shoots.slice()} gridSize={gameEnvironment.gridSize} />
-        <Ammos gridSize={gameEnvironment.gridSize} ammoPosition={gameEnvironment.ammoPosition} />
-        <Players gridSize={gameEnvironment.gridSize} playerInstances={playerInstances} playerStates={playerStates} />
+      <div className="clash" onClick={this.handleClick
+      }>
+        <Tiles
+        gridSize={gameEnvironment.gridSize}
+        />
+        <Shoots
+        shoots={shoots.slice()} gridSize={gameEnvironment.gridSize}
+        />
+        <Ammos
+        gridSize={gameEnvironment.gridSize} ammoPosition={gameEnvironment.ammoPosition}
+        />
+        <Players
+         gridSize={gameEnvironment.gridSize} playerInstances={playerInstances} playerStates={playerStates}
+         />
         {!!notification.length && <Notifications kills={notification} />}
-        <Stats rounds={rounds} total={totalRounds} playerStates={playerStates} stats={gameStats} />
+        <Stats
+        rounds={rounds} total={totalRounds} playerStates={playerStates} stats={gameStats} />
         {false && <pre className="debugger">{JSON.stringify(playerStates, 0, 2)}</pre>}
       </div>
-    );
-  }
-}
+    )}
+  })
+
 
 export default Clash;
+// module.exports = Clash;
